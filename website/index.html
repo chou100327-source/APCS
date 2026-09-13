@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APCS 初級・中級 · Python 自學站</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#2B5CB8">
+<meta name="color-scheme" content="light only">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="brand-mark">APCS</span><span class="brand-sub">初級・中級 · Python 自學站</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="home" data-icon="home">首頁</button>
+    <button class="tab-btn" data-tab="read" data-icon="book">教材</button>
+    <button class="tab-btn" data-tab="quiz" data-icon="quiz">觀念題</button>
+    <button class="tab-btn" data-tab="judge" data-icon="code">程式判題</button>
+    <button class="tab-btn" data-tab="viz" data-icon="film">動畫圖解</button>
+    <button class="tab-btn" data-tab="cheat" data-icon="bulb">速查・筆記</button>
+  </nav>
+  <div class="goal" data-icon="target">初級＋中級題本</div>
+</header>
+
+<main>
+  <!-- ========== 首頁 / 儀表板 ========== -->
+  <section id="tab-home" class="tab-panel active">
+    <div id="home-body" class="home-body"></div>
+  </section>
+
+  <!-- ========== 教材閱讀 ========== -->
+  <section id="tab-read" class="tab-panel">
+    <button id="nav-toggle" class="nav-toggle" data-icon="layers">目錄</button>
+    <div id="nav-backdrop" class="nav-backdrop"></div>
+    <aside id="lesson-nav" class="sidebar"><div class="loading">載入目錄中…</div></aside>
+    <article id="lesson-content" class="content markdown-body">
+      <div class="reader-empty">
+        <div class="reader-empty-icon" data-icon="book"></div>
+        <p>從左側選一個單元開始，或回<b>首頁</b>照著 50 天計畫走。</p>
+        <p class="tip" data-icon="warn">若左側目錄一直轉圈，代表你用 <code>file://</code> 直接開了本頁；請改用本地伺服器（見 <code>README.md</code>）。</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- ========== 選擇題測驗 ========== -->
+  <section id="tab-quiz" class="tab-panel">
+    <div class="quiz-wrap">
+      <div class="quiz-controls">
+        <label>範圍：
+          <select id="quiz-week"><option value="all">全部</option></select>
+        </label>
+        <button id="quiz-start" class="btn primary">開始 / 重新出題</button>
+        <span id="quiz-score" class="score"></span>
+      </div>
+      <div id="quiz-list"></div>
+      <button id="quiz-submit" class="btn primary" style="display:none">交卷對答案</button>
+    </div>
+  </section>
+
+  <!-- ========== 程式判題 ========== -->
+  <section id="tab-judge" class="tab-panel">
+    <div class="judge-wrap">
+      <aside class="judge-side">
+        <label>選擇題目：</label>
+        <select id="problem-select"></select>
+        <div id="problem-statement" class="problem-statement"></div>
+      </aside>
+      <div class="judge-main">
+        <div class="editor-toolbar">
+          <button id="btn-run" class="btn" data-icon="play">執行（用下方自訂輸入）</button>
+          <button id="btn-judge" class="btn primary" data-icon="check">判題（跑所有測資）</button>
+          <label class="upload-label" data-icon="upload">上傳 .py
+            <input type="file" id="file-upload" accept=".py,.txt" hidden>
+          </label>
+          <button id="btn-reset" class="btn ghost" data-icon="reset">還原範本</button>
+        </div>
+        <div class="editor-wrap">
+          <div class="editor-gutter" id="code-gutter" aria-hidden="true"></div>
+          <div class="editor-inner">
+            <pre class="editor-hl" aria-hidden="true"><code id="code-hl" class="language-python"></code></pre>
+            <textarea id="code-editor" spellcheck="false" autocapitalize="off" autocorrect="off" wrap="off"></textarea>
+          </div>
+        </div>
+        <div class="io-row">
+          <div class="io-col">
+            <label>自訂輸入（stdin）</label>
+            <textarea id="stdin-box" spellcheck="false" placeholder="執行時餵給程式的輸入"></textarea>
+          </div>
+          <div class="io-col">
+            <label>結果</label>
+            <pre id="run-output" class="run-output">按「執行」或「判題」看結果。</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 動畫圖解 ========== -->
+  <section id="tab-viz" class="tab-panel">
+    <div class="viz-wrap">
+      <div class="viz-picker">
+        <label>選擇圖解：</label>
+        <select id="viz-select"></select>
+        <span class="viz-hint">用「上一步／下一步」逐步看，或「自動播放」；上方可改輸入再「重新產生」。</span>
+      </div>
+      <div id="viz-host"></div>
+    </div>
+  </section>
+
+  <!-- ========== 考前速查 · 我的筆記 ========== -->
+  <section id="tab-cheat" class="tab-panel">
+    <div class="cheat-wrap">
+      <div class="cheat-main">
+        <div class="cheat-head">
+          <h2 data-icon="bulb">考前速查</h2>
+          <p class="cheat-sub">考試當天快速掃過最常用的 Python 語法。點上方主題可跳到該區，程式碼可一鍵複製。</p>
+        </div>
+        <div class="cheat-chips" id="cheat-chips"></div>
+        <div id="cheat-body" class="cheat-body"></div>
+      </div>
+      <aside class="notes-panel">
+        <div class="notes-head"><span data-icon="pencil">我的筆記</span><span class="notes-hint sync-idle" id="sync-status" title="跨裝置同步狀態（點一下立即同步）">同步</span></div>
+        <div class="notes-add">
+          <textarea id="note-input" placeholder="打上你想記的重點、常錯的地方…按「新增」會出現在最上面"></textarea>
+          <button id="note-add-btn" class="btn primary" data-icon="check">新增筆記</button>
+        </div>
+        <div id="notes-list" class="notes-list"></div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pyodide@314.0.6/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11/highlight.min.js"></script>
+<script src="icons.js"></script>
+<script src="plan.js"></script>
+<script src="cheat.js"></script>
+<script src="quiz.js"></script>
+<script src="problems.js"></script>
+<script src="viz.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

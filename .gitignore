@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# 相依套件（本專案不需要，純靜態）
+node_modules/
+
+# Vercel
+.vercel
+.gstack/
