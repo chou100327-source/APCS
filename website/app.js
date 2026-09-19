@@ -79,6 +79,40 @@ function tagClass(tag) {
   if (/應試|考前/.test(tag)) return "exam";
   return "teach";
 }
+/* 每一天點下去要做什麼：有 p 就開那份教材／練習頁，否則照 go 跳轉（格式見 plan.js 開頭註解） */
+function dayActionInfo(day) {
+  if (day.p) {
+    if (day.p.includes("/練習/")) return { icon: "pencil", label: "打開今天的練習頁" };
+    return { icon: "book", label: "打開教材" };
+  }
+  const [kind, arg] = (day.go || "").split(/:(.*)/s);
+  if (kind === "judge") return { icon: "code", label: "到程式判題寫這一題" };
+  if (kind === "quiz") return { icon: "quiz", label: arg === "wrong" ? "到觀念題做錯題重練" : "到觀念題出一輪題目" };
+  if (kind === "url") return { icon: "arrow", label: "另開 ZeroJudge 考古題" };
+  if (kind === "tab") return { icon: arg === "read" ? "book" : "code", label: "切到「" + ({ read: "教材", judge: "程式判題", quiz: "觀念題" }[arg] || arg) + "」分頁" };
+  return { icon: "circle", label: "" };
+}
+function runDayAction(day) {
+  if (day.p) { openLesson(day.p); return; }
+  const [kind, arg] = (day.go || "").split(/:(.*)/s);
+  if (kind === "judge") {
+    const i = PROBLEMS.findIndex(p => p.id === arg);
+    switchTab("judge");
+    if (i >= 0) {
+      const sel = document.getElementById("problem-select");
+      sel.value = i; selectProblem(i);
+    }
+  } else if (kind === "quiz") {
+    switchTab("quiz");
+    const sel = document.getElementById("quiz-week");
+    sel.value = arg; startQuiz();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (kind === "tab") {
+    switchTab(arg);
+  } else if (kind === "url") {
+    window.open(arg, "_blank", "noopener");
+  }
+}
 function buildHome() {
   const cur = currentWeekId();
   const today = todayStr();
@@ -117,12 +151,14 @@ function buildHome() {
       const isToday = day.d === today;
       // 當天任務不直接列出來（畫面太雜），改成滑鼠移上去看的提示
       const tip = attrEsc(day.tasks.map(t => "・" + t).join("\n"));
+      const a = dayActionInfo(day);
       return `<div class="wk-item day-item ${DONE.has(key) ? "done" : ""} ${isToday ? "is-today" : ""}"
-                   data-path="${key}" ${day.p ? `data-open="${day.p}"` : ""} title="${tip}">
+                   data-path="${key}" data-date="${day.d}" title="${tip}">
          <span class="tick" data-tick="1">${ICON("check", 14)}</span>
          <span class="wk-when day-when">${fmtDay(day.d)}<small>${day.w}</small></span>
-         <span class="lbl">${day.t}${day.p ? ICON("book", 13) : ""}</span>
+         <span class="lbl">${day.t}</span>
          ${isToday ? `<span class="wk-tag now">今天</span>` : ""}
+         <span class="day-go" title="${attrEsc(a.label)}">${ICON(a.icon, 14)}</span>
        </div>`;
     }).join("");
     const tag = isCur ? `<span class="wk-tag now">本週</span>`
@@ -157,7 +193,8 @@ function buildHome() {
   // 事件：打開教材 / 勾選完成 / 跳分頁
   body.querySelectorAll(".day-item").forEach(it => it.addEventListener("click", e => {
     if (e.target.closest("[data-tick]")) { toggleDone(it.dataset.path); return; }
-    if (it.dataset.open) openLesson(it.dataset.open);
+    const day = STUDY.days.find(d => d.d === it.dataset.date);
+    if (day) runDayAction(day);
   }));
   body.querySelectorAll(".home-link[data-open]").forEach(el => el.addEventListener("click", () => openLesson(el.dataset.open)));
   body.querySelectorAll("[data-tabjump]").forEach(el => el.addEventListener("click", () => switchTab(el.dataset.tabjump)));
@@ -185,6 +222,13 @@ const NAV_SECTIONS = [
     ["10 字元與編碼", "10-字元與編碼.md"],
     ["11 字串處理", "11-字串處理.md"],
     ["12 文字處理與流程模擬", "12-文字處理與流程模擬.md"],
+  ]},
+  { name: "每日練習", note: "初級・中級", dir: "../練習/", files: [
+    ["01 練習：輸出格式", "01-輸出格式.md"],
+    ["02 練習：型別轉換", "02-型別轉換.md"],
+    ["04 練習：條件式判真假", "04-條件式判真假.md"],
+    ["08 練習：串列操作", "08-串列操作.md"],
+    ["10 練習：凱撒加密", "10-凱撒加密.md"],
   ]},
   { name: "進階延伸", note: "6 單元・行有餘力再讀", dir: "../03-進階延伸/", files: [
     ["13 函式", "13-函式.md"],
@@ -262,6 +306,7 @@ async function loadLesson(path, aEl) {
     setupInlineQuizzes(inner);   // 先把 ```quiz 區塊換成互動選擇題（免得被當一般程式碼）
     inner.querySelectorAll("pre").forEach(setupCodeWalkthrough);
     embedViz(path, inner);
+    wireLessonLinks(path, inner);
     addLessonActions(path, inner);
     content.scrollTop = 0;
   } catch (e) {
@@ -270,6 +315,21 @@ async function loadLesson(path, aEl) {
       最可能是用了 <code>file://</code> 直接開頁；請在專案根目錄執行
       <code>python3 -m http.server 8000</code> 後開 <code>http://localhost:8000/website/</code></p></div>`;
   }
+}
+
+/* 教材裡指向其他 .md 的連結（例如練習頁的「回去複習單元」）改成在站內打開，
+   而不是讓瀏覽器直接跳去顯示原始 .md 檔。連結寫法是相對於該 .md 檔的路徑。 */
+function wireLessonLinks(path, inner) {
+  const siteRoot = new URL("../", location.href);            // website/ 的上一層＝專案根目錄
+  const here = new URL(path, location.href);                  // 目前這份教材的網址
+  inner.querySelectorAll("a[href]").forEach(a => {
+    const href = a.getAttribute("href");
+    if (!/\.md(#.*)?$/i.test(href) || /^[a-z]+:/i.test(href)) return;
+    const target = new URL(href, here);
+    if (!target.pathname.startsWith(siteRoot.pathname)) return;
+    const appPath = "../" + decodeURIComponent(target.pathname.slice(siteRoot.pathname.length));
+    a.addEventListener("click", e => { e.preventDefault(); openLesson(appPath); });
+  });
 }
 
 /* 在教材上下各放一顆「標記完成」按鈕 */
@@ -432,53 +492,13 @@ function buildInlineQuiz(qd) {
   return card;
 }
 
-/* 逐行走讀：一句話說明某行在做什麼（優先用程式碼自己的 # 註解，否則用啟發式判斷） */
-function explainLine(line) {
-  const raw = (line || "").trim();
-  // 拆出行內 # 註解，當「補充意圖」，不直接拿它當整句解釋（字串裡的 # 不算）
-  let ci = -1, q = null;
-  for (let i = 0; i < raw.length; i++) {
-    const ch = raw[i];
-    if (q) { if (ch === q) q = null; }
-    else if (ch === '"' || ch === "'") q = ch;
-    else if (ch === "#") { ci = i; break; }
-  }
-  const cm = ci >= 0 ? raw.slice(ci + 1).trim() : "";
-  const t = (ci >= 0 ? raw.slice(0, ci) : raw).trim();
-  let base = "";
-  if (!t) base = cm ? "" : "空行（排版用，不執行）";
-  else if (/^(import|from)\s/.test(t)) base = "匯入模組：把要用到的工具載進來";
-  else if (/^def\s+(\w+)/.test(t)) base = `定義函式 ${t.match(/^def\s+(\w+)/)[1]}()，呼叫它才會執行裡面的內容`;
-  else if (/^class\s/.test(t)) base = "定義類別";
-  else if (/=\s*int\s*\(\s*input\s*\(/.test(t)) base = "讀入一行並轉成整數";
-  else if (/map\s*\(\s*int\s*,\s*input\s*\(\)\.split\(\)/.test(t)) base = "讀入一行、用空白切開，每個都轉成整數";
-  else if (/\binput\s*\(/.test(t)) base = "從輸入讀進一行（拿到的是字串）";
-  else if (/^print\s*\(|\bprint\s*\(/.test(t)) base = "把結果輸出";
-  else if (/^for\s+.+\s+in\s+range\s*\(/.test(t)) base = "for 迴圈：照 range 產生的數字重複執行";
-  else if (/^for\s+.+\s+in\s/.test(t)) base = "for 迴圈：把後面的東西一個一個取出來處理";
-  else if (/^while\b/.test(t)) base = "while 迴圈：條件成立就一直做";
-  else if (/^if\b/.test(t)) base = "條件判斷：成立才做裡面的事";
-  else if (/^elif\b/.test(t)) base = "上面的條件不成立時，再檢查這個條件";
-  else if (/^else\b/.test(t)) base = "以上條件都不成立時走這裡";
-  else if (/^try\b|^except\b|^finally\b/.test(t)) base = "例外處理：把可能出錯的情況接住";
-  else if (/^return\b/.test(t)) base = "回傳值並結束這個函式";
-  else if (/^break\b/.test(t)) base = "跳出整個迴圈";
-  else if (/^continue\b/.test(t)) base = "跳過本輪剩下的程式，直接進下一輪";
-  else if (/^global\b/.test(t)) base = "宣告要修改的是全域變數";
-  else if (/\.append\s*\(/.test(t)) base = "在串列尾端加一個元素（堆疊的 push）";
-  else if (/\.pop\s*\(\s*\)/.test(t)) base = "取出並移除最後一個元素（堆疊的 pop）";
-  else if (/\.popleft\s*\(/.test(t)) base = "取出並移除最前面的元素（佇列的 dequeue）";
-  else if (/\.sort\s*\(|\bsorted\s*\(/.test(t)) base = "排序";
-  // 同時指派多個變數（含交換寫法）
-  else if (/^[\w\[\]\.]+\s*,\s*[\w\[\]\.]+\s*=(?!=)/.test(t)) base = "一次指派多個變數（右邊會先整包算好）";
-  else if (/^[\w.]+(\[[^\]]*\])+\s*=(?!=)/.test(t)) base = "把算好的值存進這個位置";
-  else if (/^\w+\s*(\+|-|\*|\/\/?|%|\*\*)=/.test(t)) base = "把運算結果存回原本的變數";
-  else if (/^\w+\s*=(?!=)/.test(t)) base = "計算並存到變數";
-  else base = "執行這一行";
-  // 有註解就當補充意圖接在後面；沒有 base（例如整行只有註解）才單獨用註解
-  if (cm) return base ? `${base}（${cm}）` : cm;
-  return base;
-}
+let activeWalk = null;
+document.addEventListener("keydown", e => {
+  if (!activeWalk || /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ""))) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); activeWalk.next(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); activeWalk.prev(); }
+  else if (e.key === "Escape") activeWalk.stop();
+});
 function setupCodeWalkthrough(pre) {
   const code = pre.querySelector("code");
   if (!code || pre.dataset.walk) return;
@@ -495,9 +515,10 @@ function setupCodeWalkthrough(pre) {
   wrap.appendChild(panel);
   const lnEls = [...code.querySelectorAll(".ln")];
   const head = panel.querySelector(".ce-head"), text = panel.querySelector(".ce-text"), ctrl = panel.querySelector(".ce-ctrl");
-  // 一行一行往下讀，說明每行在做什麼（想看真的執行結果，請用「程式判題」分頁跑一次）
-  const steps = lines.map((_, i) => ({ line: i, note: explainLine(lines[i]) }));
-  head.textContent = "逐行順讀：一行一句話說明（想看實際執行結果請到「程式判題」分頁跑）";
+  // 一行一行往下讀（空行跳過），每行拆開說明：在做什麼、每個部分的意思、屬於哪一段。
+  // 說明由 explain.js 產生；想看實際執行結果請到「程式判題」分頁跑一次。
+  const steps = lines.map((l, i) => ({ line: i })).filter(st => lines[st.line].trim() !== "");
+  head.innerHTML = `${ICON("book", 14)}<span>逐行走讀：每一行拆開講「在做什麼、每個部分的意思、屬於哪一段」。鍵盤 ← → 也可以切換。</span>`;
   let cur = 0, on = false;
   const mk = (html, f) => { const b = document.createElement("button"); b.className = "btn"; b.innerHTML = html; b.onclick = f; return b; };
   const prog = document.createElement("span"); prog.className = "prog";
@@ -505,13 +526,29 @@ function setupCodeWalkthrough(pre) {
   function draw() {
     const st = steps[cur], ln = lines[st.line] || "";
     lnEls.forEach((e, i) => e.classList.toggle("dbg-current", i === st.line));
-    text.innerHTML = `<b>第 ${st.line + 1} 行</b>　<code class="ce-code">${escapeHtml(ln.trim() || "（空行）")}</code><br>→ ${escapeHtml(st.note)}`;
+    const info = window.EXPLAIN ? EXPLAIN.line(lines, st.line) : { sum: "", points: [], ctx: "" };
+    text.innerHTML =
+      `<div class="ce-top"><span class="ce-no">第 ${st.line + 1} 行</span><code class="ce-code">${escapeHtml(ln.trim())}</code></div>
+       <div class="ce-sum">${info.sum}</div>
+       ${info.points.length ? `<ul class="ce-points">${info.points.map(p => `<li>${p}</li>`).join("")}</ul>` : ""}
+       ${info.ctx ? `<div class="ce-ctx">${ICON("layers", 14)}<span>${info.ctx}</span></div>` : ""}`;
     prog.textContent = `${cur + 1} / ${steps.length}`;
     if (lnEls[st.line]) lnEls[st.line].scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
   function go(i) { if (i < 0 || i >= steps.length) return; cur = i; draw(); }
-  function stop() { on = false; wrap.classList.remove("walking"); lnEls.forEach(e => e.classList.remove("dbg-current")); }
-  function start() { on = true; cur = 0; wrap.classList.add("walking"); draw(); }
+  function stop() { on = false; wrap.classList.remove("walking"); lnEls.forEach(e => e.classList.remove("dbg-current")); if (activeWalk === ctl) activeWalk = null; }
+  function start() {
+    if (activeWalk && activeWalk !== ctl) activeWalk.stop();   // 同一時間只走一段程式
+    on = true; cur = 0; wrap.classList.add("walking"); activeWalk = ctl; draw();
+  }
+  const ctl = { stop, next: () => go(cur + 1), prev: () => go(cur - 1) };
+  // 點程式碼的某一行，直接跳到那一行的說明
+  lnEls.forEach((e, i) => e.addEventListener("click", () => {
+    const k = steps.findIndex(st => st.line === i);
+    if (k < 0) return;
+    if (!on) start();
+    go(k);
+  }));
   btn.onclick = () => on ? stop() : start();
 }
 
