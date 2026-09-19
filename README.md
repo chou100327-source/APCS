@@ -29,7 +29,7 @@
 本機執行（需本地伺服器，因為要讀取上層的 `.md`）：
 
 ```bash
-python3 -m http.server 8000
+python3 serve.py
 # 開 http://localhost:8000/website/
 ```
 

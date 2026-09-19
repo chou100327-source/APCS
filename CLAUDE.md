@@ -64,7 +64,8 @@ E: 答完後顯示的解說（可加 [[viz:KEY]] 掛動畫）
 
 ## 網站架構（website/）
 
-純前端、無建置步驟。要開網站得用本地伺服器（`python3 -m http.server 8000`，開 `http://localhost:8000/website/`），因為要 fetch 上層資料夾的 `.md`。
+純前端、無建置步驟。要開網站得用本地伺服器：在專案根目錄跑 **`python3 serve.py`**，開 `http://localhost:8000/website/`（要 fetch 上層資料夾的 `.md`）。
+**不要用 `python3 -m http.server`**：它不送 Cache-Control，瀏覽器會沿用舊版 JS，改完程式使用者看到的還是舊行為（曾因此回報「練習日點了沒反應」）。`serve.py` 一律送 `no-cache`。
 
 | 檔案 | 作用 |
 |---|---|

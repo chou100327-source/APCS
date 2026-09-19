@@ -20,7 +20,7 @@
 在**專案根目錄**（也就是這個 `website/` 的上一層）開啟終端機，執行：
 
 ```bash
-python3 -m http.server 8000
+python3 serve.py
 ```
 
 然後用瀏覽器打開：
@@ -29,6 +29,8 @@ python3 -m http.server 8000
 http://localhost:8000/website/
 ```
 
+> `serve.py` 跟 `python3 -m http.server` 一樣，只是會叫瀏覽器每次都檢查檔案有沒有更新——不然改完教材或程式，瀏覽器可能還在用舊版。
+>
 > 若沒有 python3，用 Node 也可以：`npx serve` 或 `npx http-server`（再依它顯示的網址加上 `/website/`）。
 
 ---

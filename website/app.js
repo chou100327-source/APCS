@@ -300,7 +300,7 @@ async function loadLesson(path, aEl) {
   const content = document.getElementById("lesson-content");
   content.innerHTML = '<div class="loading">載入中…</div>';
   try {
-    const res = await fetch(encodeURI(path));
+    const res = await fetch(encodeURI(path), { cache: "no-cache" });   // 教材改過就一定拿到新版
     if (!res.ok) throw new Error("HTTP " + res.status);
     const md = await res.text();
     let html = window.marked ? (marked.parse ? marked.parse(md) : marked(md)) : escapeHtml(md);
@@ -317,7 +317,7 @@ async function loadLesson(path, aEl) {
     content.innerHTML =
       `<div class="reader-empty"><p class="tip">${ICON("warn")}讀取失敗：${escapeHtml(String(e.message))}。<br>
       最可能是用了 <code>file://</code> 直接開頁；請在專案根目錄執行
-      <code>python3 -m http.server 8000</code> 後開 <code>http://localhost:8000/website/</code></p></div>`;
+      <code>python3 serve.py</code> 後開 <code>http://localhost:8000/website/</code></p></div>`;
   }
 }
 
