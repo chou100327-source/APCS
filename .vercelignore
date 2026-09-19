@@ -1,0 +1,7 @@
+# 部署到 Vercel 時不要上傳的檔案（網站用不到，也不該公開）
+APCS講義.docx
+CLAUDE.md
+README.md
+serve.py
+website/README.md
+.gitignore
