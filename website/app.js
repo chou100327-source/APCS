@@ -127,7 +127,7 @@ function buildHome() {
       <div class="hero-count"><span class="big">${countTxt}</span><span class="lbl">${d >= 0 ? "天後應考" : "已過考試日"}</span></div>
       <div class="hero-info">
         <h1>APCS 初級・中級 · Python 自學站</h1>
-        <p>考試日 ${STUDY.exam}。範圍依 APCS 官方「評量架構」編排：初級 7 單元、中級 5 單元、進階延伸 6 單元。每天約 30 分鐘，跟著下面的 50 天計畫走，一天一步。</p>
+        <p>考試日 ${STUDY.exam}。只排初級 7 單元＋中級 5 單元，<b>兩天一組</b>：第 1 天讀觀念、第 2 天做練習或實作題；12 個單元讀完後就是總測、考古題與錯題重練。每天約 30 分鐘。</p>
         <div class="hero-meta">
           <span class="hero-chip">${ICON("target", 15)} 初級＋中級題本</span>
           <span class="hero-chip">${ICON("calendar", 15)} ${cur ? "本週進度：" + cur : "共 8 週 / 50 天"}</span>
@@ -230,7 +230,7 @@ const NAV_SECTIONS = [
     ["08 練習：串列操作", "08-串列操作.md"],
     ["10 練習：凱撒加密", "10-凱撒加密.md"],
   ]},
-  { name: "進階延伸", note: "6 單元・行有餘力再讀", dir: "../03-進階延伸/", files: [
+  { name: "進階延伸", note: "時間不夠，暫不排入計畫", optional: true, dir: "../03-進階延伸/", files: [
     ["13 函式", "13-函式.md"],
     ["14 遞迴", "14-遞迴.md"],
     ["15 堆疊與佇列", "15-堆疊與佇列.md"],
@@ -254,19 +254,23 @@ function buildLessonNav() {
   const nav = document.getElementById("lesson-nav");
   nav.innerHTML = "";
   const dates = lessonDateMap();
-  NAV_SECTIONS.forEach(s => {
+  const addSection = s => {
     const sec = document.createElement("div");
-    sec.className = "sec";
+    sec.className = "sec" + (s.optional ? " sec-optional" : "");
     sec.innerHTML = `<span class="wk-dot">${s.files.length}</span>${s.name}<span class="sec-date">${s.note}</span>`;
     nav.appendChild(sec);
     s.files.forEach(([label, file]) => {
       const path = s.dir + file;
-      nav.appendChild(navLink(label, path, "teach", dates[path] || ""));
+      const a = navLink(label, path, "teach", dates[path] || "");
+      if (s.optional) a.classList.add("nav-optional");
+      nav.appendChild(a);
     });
-  });
+  };
+  NAV_SECTIONS.filter(s => !s.optional).forEach(addSection);
   const sec = document.createElement("div"); sec.className = "sec"; sec.innerHTML = `${ICON("target", 16)}練習與應試`;
   nav.appendChild(sec);
   STUDY.extra.forEach(([label, path]) => nav.appendChild(navLink(label, path, "drill")));
+  NAV_SECTIONS.filter(s => s.optional).forEach(addSection);   // 選讀的放最下面
   refreshDone();
 }
 function navLink(label, path, kind, date) {
@@ -565,9 +569,11 @@ function cleanEmoji(html) {
 let quizState = [];
 function initQuiz() {
   const weekSel = document.getElementById("quiz-week");
+  // 計畫只排初級＋中級，所以預設範圍是「初級＋中級」；進階延伸標成選讀、放後面
   [...new Set(QUIZ.map(q => q.w))].forEach(w => {
-    const o = document.createElement("option"); o.value = w; o.textContent = w; weekSel.appendChild(o);
+    const o = document.createElement("option"); o.value = w; o.textContent = w === "進階延伸" ? "進階延伸（選讀）" : w; weekSel.appendChild(o);
   });
+  const allOpt = document.createElement("option"); allOpt.value = "all"; allOpt.textContent = "全部（含進階延伸）"; weekSel.appendChild(allOpt);
   const wrongOpt = document.createElement("option"); wrongOpt.value = "wrong"; weekSel.appendChild(wrongOpt);
   updateWrongCount();
   document.getElementById("quiz-start").addEventListener("click", startQuiz);
@@ -596,7 +602,9 @@ function shuffleOptions(q) {
 function startQuiz() {
   const wk = document.getElementById("quiz-week").value;
   let pool = QUIZ.map((q, i) => ({ q, gi: i }))
-    .filter(o => wk === "wrong" ? WRONG.has(o.gi) : (wk === "all" || o.q.w === wk));
+    .filter(o => wk === "wrong" ? WRONG.has(o.gi)
+      : wk === "core" ? (o.q.w === "初級" || o.q.w === "中級")
+      : (wk === "all" || o.q.w === wk));
   // 隨機抽題 + 打亂選項：同一個範圍重複測不會拿到一模一樣的考卷
   pool = shuffled(pool).slice(0, QUIZ_DRAW);
   quizState = pool.map(o => ({ q: shuffleOptions(o.q), gi: o.gi, sel: -1 }));

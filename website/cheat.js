@@ -129,10 +129,14 @@ chr((ord(ch) - ord('a') + k) % 26 + ord('a'))   # 小寫
 for ch in s:
     if ch.isalpha():
         cnt[ord(ch.lower()) - ord('a')] += 1` },
+      { t: "字典當計數器", c: `cnt = {}
+for ch in s:
+    cnt[ch] = cnt.get(ch, 0) + 1
+best = max(cnt, key=cnt.get)    # 出現最多次的 key` },
     ]
   },
   {
-    id: "ds", name: "堆疊 / 佇列 / 字典", items: [
+    id: "ds", name: "堆疊／佇列（選讀）", items: [
       { t: "堆疊 stack（後進先出）", c: `stack = []
 stack.append(x)      # push
 if stack:            # 取之前先確認非空
@@ -149,14 +153,10 @@ for ch in s:
         if not stack or stack.pop() != pairs[ch]:
             return False
 return len(stack) == 0    # 掃完要空的` },
-      { t: "字典當計數器", c: `cnt = {}
-for ch in s:
-    cnt[ch] = cnt.get(ch, 0) + 1
-best = max(cnt, key=cnt.get)    # 出現最多次的 key` },
     ]
   },
   {
-    id: "algo", name: "排序 / 搜尋 / 遞迴", items: [
+    id: "algo", name: "排序／搜尋／遞迴（選讀）", items: [
       { t: "三種 O(n²) 排序的核心", d: "氣泡＝相鄰交換（每輪最大值浮到最後、後段先定型）；選擇＝每輪挑最小換到前面（前段先定型）；插入＝插進前面已排序區段（資料接近排好時最快）。" },
       { t: "二分搜尋（資料要先排序）", c: `lo, hi = 0, len(a) - 1
 while lo <= hi:

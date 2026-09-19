@@ -719,3 +719,8 @@ main{height:calc(100vh - 52px); overflow:hidden}
   .notes-panel{position:static; max-height:none}
   .notes-list{max-height:60vh}
 }
+
+/* 側邊欄：計畫暫不排入的「進階延伸」淡化顯示 */
+.sidebar .sec-optional{opacity:.6; margin-top:18px}
+.sidebar a.nav-optional{opacity:.55}
+.sidebar a.nav-optional:hover,.sidebar a.nav-optional.active{opacity:1}
